@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0f19" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PDD KZ" />
+  <title>PDD Inspector KZ — Проверка товаров Pinduoduo и Цена с НДС в Тенге</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-logo">拼</div>
+        <div class="brand-text">
+          <h1>PDD Inspector <span class="badge-kz">KZ ₸ + НДС</span></h1>
+          <p>Проверка товара • Продавец • Боты в отзывах</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="rate-pill" id="headerRateBtn" title="Курс юаня к тенге (нажмите для изменения)">
+          <span class="rate-dot"></span>
+          <span id="headerRateText">1 ¥ = 66.96 ₸</span>
+        </button>
+        <button class="install-header-btn" id="openInstallModalBtn" title="Установить приложение на iPhone или Android">
+          <span>📲</span>
+          <span>Скачать</span>
+        </button>
+        <button class="icon-btn" id="themeToggleBtn" title="Дневной / Ночной режим">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hidden file input used when the app asks if user wants to attach a screenshot -->
+  <input type="file" id="hiddenScreenshotInput" accept="image/*" style="display:none;" />
+
+  <!-- Main Workspace -->
+  <main class="main-container">
+    <!-- ====================================================================
+         VIEW 1: ПРОВЕРКА ТОВАРА (ANALYZER)
+         ==================================================================== -->
+    <section class="view-section active" id="view-analyzer">
+      <!-- Clean & Simple Link Scanner -->
+      <div class="scanner-card">
+        <div class="scanner-top-row">
+          <div class="scanner-title">🔍 Вставьте ссылку на товар из Pinduoduo</div>
+          <button class="help-link-btn" id="goToGuideBtn">❓ Где взять ссылку? (Фото-инструкция)</button>
+        </div>
+
+        <div class="search-row">
+          <div class="url-input-wrapper">
+            <input
+              type="text"
+              id="pddUrlInput"
+              class="url-input"
+              placeholder="Нажмите «Вставить» после Copy Link в Pinduoduo..."
+              autocomplete="off"
+            />
+            <div class="input-inline-actions">
+              <button class="clear-input-btn" id="clearUrlBtn" title="Очистить" style="display:none;">✕</button>
+              <button class="paste-btn" id="pasteUrlBtn">📋 Вставить</button>
+            </div>
+          </div>
+
+          <button class="btn-primary" id="analyzeBtn">
+            <span>⚡ Проверить товар</span>
+          </button>
+        </div>
+
+        <!-- Ready-to-click Product Cards -->
+        <div class="presets-bar">
+          <span class="presets-label">Ваши товары и примеры:</span>
+          <button class="preset-chip" data-preset="wdairen_bait">
+            🎣 Приманки WDAIREN (121 ₸ / ¥1.8)
+          </button>
+          <button class="preset-chip" data-preset="blinds_user">
+            🪟 Жалюзи-плиссе Блэкаут (529 ₸ / ¥7.9)
+          </button>
+          <button class="preset-chip" data-preset="flagship">
+            🎧 Наушники Xiaomi Флагман (189 ¥)
+          </button>
+          <button class="preset-chip" data-preset="botfarm">
+            🚨 Пример накрутки ботов (Кроссовки 39.9 ¥)
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading Progress Banner -->
+      <div class="loading-banner" id="loadingBanner">
+        <div class="spinner"></div>
+        <div class="loading-steps">
+          <strong id="loadingTitle">Проверка товара и продавца...</strong>
+          <span id="loadingSub">Считаем комментарии, проверяем ботов и переводим цену в тенге с НДС 12%</span>
+        </div>
+      </div>
+
+      <!-- TOP ROW: Product Card & Simple Price + VAT Calculator -->
+      <div class="top-summary-grid">
+        <!-- Card 1: Product Overview, Like Button & Verdict -->
+        <div class="card">
+          <div class="card-title-row">
+            <div class="card-title">
+              <span>📦 О товаре</span>
+              <span class="badge-kz" id="resCategoryBadge" style="background:rgba(255,255,255,0.08); color:var(--text-secondary);">Категория</span>
+            </div>
+            <button class="like-btn" id="likeProductBtn">
+              <span id="likeHeartIcon">🤍</span>
+              <span id="likeBtnText">Нравится</span>
+            </button>
+          </div>
+
+          <div class="product-hero">
+            <div class="product-thumb" id="resThumb">📦</div>
+            <div class="product-meta">
+              <div class="product-badges" id="resBadges"></div>
+              <h2 class="product-title" id="resTitle">—</h2>
+              <div class="product-sub-info">
+                <span id="resSalesCount">Продажи: —</span>
+                <span>•</span>
+                <span id="resRepeatCount">Повторно купили: —</span>
+                <span>•</span>
+                <a href="#" id="resOriginalLink" target="_blank" rel="noopener">Открыть в Pinduoduo ↗</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Simple Clear Verdict -->
+          <div class="verdict-banner good" id="resVerdictBanner">
+            <div class="verdict-left">
+              <div class="verdict-tag" id="resVerdictTag">ИТОГ ПРОВЕРКИ</div>
+              <div class="verdict-headline" id="resVerdictHeadline">—</div>
+              <div class="verdict-desc" id="resVerdictDesc">—</div>
+            </div>
+            <div class="score-circles">
+              <div class="score-box">
+                <div class="score-val" id="resTrustScore" style="color: var(--success);">—%</div>
+                <div class="score-lbl">Доверие</div>
+              </div>
+              <div class="score-box">
+                <div class="score-val" id="resBotScore" style="color: var(--danger);">—%</div>
+                <div class="score-lbl">Боты</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="product-action-bar">
+            <button class="btn-secondary" id="addToCompareBtn">
+              <span>⚖️ Добавить к сравнению</span>
+            </button>
+            <button class="btn-secondary" id="askScreenshotManualBtn">
+              <span>📸 Уточнить по скриншоту</span>
+            </button>
+            <button class="btn-secondary" id="shareReportBtn">
+              <span>📤 Скопировать отчёт</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Card 2: Simple Kazakhstan Price + НДС (NO Cargo!) -->
+        <div class="card kzt-card">
+          <div>
+            <div class="card-title-row">
+              <div class="card-title">🇰🇿 Цена в Тенге с учётом НДС</div>
+              <span class="badge-kz" id="calcVatTag">НДС 12%</span>
+            </div>
+
+            <div class="kzt-hero-price">
+              <div class="kzt-total-block">
+                <div class="kzt-label">Итоговая цена с НДС (<span id="heroVatLabel">12%</span>)</div>
+                <div class="kzt-amount" id="calcFinalKzt">0 ₸</div>
+                <div class="kzt-sub" id="calcBatchSub">Текущая цена без НДС: 0 ₸</div>
+              </div>
+              <div class="cny-original-pill">
+                <span>В Pinduoduo</span>
+                <strong id="calcOriginalCny">¥ 0</strong>
+              </div>
+            </div>
+
+            <div class="free-shipping-banner">
+              <span>🚚 Доставка Pinduoduo в Казахстан</span>
+              <span>БЕСПЛАТНО (0 ₸)</span>
+            </div>
+
+            <div class="simple-calc-inputs">
+              <div class="calc-field">
+                <label>
+                  <span>Текущая цена товара</span>
+                  <select id="calcInputCurrency" style="width:auto; padding:2px 6px; font-size:11.5px; border-radius:6px;">
+                    <option value="KZT">в Тенге (₸)</option>
+                    <option value="CNY">в Юанях (¥)</option>
+                  </select>
+                </label>
+                <input type="number" id="calcInputPrice" step="0.1" min="0" value="121" />
+              </div>
+
+              <div class="calc-field">
+                <label>
+                  <span>Ставка НДС РК</span>
+                  <span style="font-size:11px; color:var(--kz-cyan);" id="calcRateSmallLabel">1¥ = 66.96₸</span>
+                </label>
+                <select id="calcVatPercent">
+                  <option value="12" selected>12% (Стандарт НДС)</option>
+                  <option value="16">16% (Новый НДС)</option>
+                  <option value="0">0% (Без НДС)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Quick Quantity Selector -->
+            <div style="font-size:12px; color:var(--text-secondary); font-weight:700; margin-bottom:6px;">
+              Количество штук:
+            </div>
+            <div class="qty-pills-row" id="qtyPillsRow">
+              <button class="qty-pill active" data-qty="1">1 шт</button>
+              <button class="qty-pill" data-qty="2">2 шт</button>
+              <button class="qty-pill" data-qty="3">3 шт</button>
+              <button class="qty-pill" data-qty="5">5 шт</button>
+              <button class="qty-pill" data-qty="10">10 шт</button>
+            </div>
+          </div>
+
+          <div class="Breakdown-list">
+            <div class="breakdown-row">
+              <span>Текущая цена (без НДС):</span>
+              <strong id="bdBaseKzt">0 ₸</strong>
+            </div>
+            <div class="breakdown-row vat-highlight">
+              <span>Налог НДС (<span id="bdVatPct">12</span>%):</span>
+              <strong id="bdVatKzt">+ 0 ₸</strong>
+            </div>
+            <div class="breakdown-row">
+              <span>Доставка до пункта выдачи:</span>
+              <strong style="color:var(--success);">0 ₸ (Бесплатно)</strong>
+            </div>
+            <div class="breakdown-row total-row">
+              <span>ИТОГО К ОПЛАТЕ (<span id="bdQtyTxt">1 шт</span>):</span>
+              <strong id="bdGrandTotalKzt" style="color: var(--kz-cyan);">0 ₸</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTTOM ROW: Seller & Reviews Bot Check -->
+      <div class="analysis-two-col">
+        <!-- Card 3: Seller Info -->
+        <div class="card">
+          <div class="card-title-row">
+            <div class="card-title">🏪 Что это за продавец?</div>
+            <span class="pdd-badge guarantee" id="sellerScoreBadge">Рейтинг 4.9</span>
+          </div>
+
+          <div class="seller-header-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;">
+              <strong style="font-size:15.5px;" id="sellerName">—</strong>
+              <span class="badge-kz" id="sellerTypeTag">—</span>
+            </div>
+            <p style="font-size:13px; color:var(--text-secondary);" id="sellerSpecializationDesc">—</p>
+
+            <div class="seller-stats-grid">
+              <div class="seller-stat-item">
+                <div class="val" id="sellerAge">—</div>
+                <div class="lbl">На площадке</div>
+              </div>
+              <div class="seller-stat-item">
+                <div class="val" id="sellerTotalSales">—</div>
+                <div class="lbl">Продано товаров</div>
+              </div>
+              <div class="seller-stat-item">
+                <div class="val" id="sellerRepeatRate">—</div>
+                <div class="lbl">Купили повторно</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dsr-bars" id="sellerDsrBars"></div>
+
+          <div style="font-size:13px; font-weight:700; margin-bottom:8px; display:flex; justify-content:space-between;">
+            <span>Что ещё продаёт магазин:</span>
+            <span id="sellerNicheBadge" style="color:var(--success);">Одно направление</span>
+          </div>
+          <div class="catalog-chips" id="sellerCatalogChips"></div>
+          <div class="seller-checklist" id="sellerChecklist"></div>
+        </div>
+
+        <!-- Card 4: Accurate Review & Bot Counter -->
+        <div class="card">
+          <div class="card-title-row">
+            <div class="card-title">💬 Подсчёт комментариев и проверка на ботов</div>
+            <span class="pdd-badge flagship" id="botSummaryPill">Анализ отзывов</span>
+          </div>
+
+          <!-- Visual Human vs Bot Ratio Bar -->
+          <div class="review-ratio-box">
+            <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:800;">
+              <span style="color:var(--success);" id="humanPctLabel">👤 Живые люди: 89%</span>
+              <span style="color:var(--danger);" id="botPctLabel">🤖 Повторы / Боты: 11%</span>
+            </div>
+            <div class="ratio-bar-track">
+              <div class="ratio-bar-human" id="humanRatioFill" style="width: 89%;"></div>
+            </div>
+            <div style="font-size:12px; color:var(--text-secondary); display:flex; justify-content:space-between;">
+              <span id="totalPositiveReviewsTxt">Всего положительных: —</span>
+              <span id="repeatBuyersCountTxt">Повторных покупок: —</span>
+            </div>
+          </div>
+
+          <div class="bot-metrics-grid">
+            <div class="bot-metric-card">
+              <div class="m-val" id="bmDuplicateRate">—%</div>
+              <div class="m-lbl">Одинаковые комментарии</div>
+            </div>
+            <div class="bot-metric-card">
+              <div class="m-val" id="bmMediaRate">—%</div>
+              <div class="m-lbl">Отзывы с реальными фото</div>
+            </div>
+          </div>
+
+          <div style="font-size:12.5px; font-weight:700; color:var(--text-secondary); margin-bottom:8px;">
+            Самые частые фразы в комментариях под товаром:
+          </div>
+          <div class="phrase-tags" id="repeatedPhrasesContainer"></div>
+
+          <div style="font-size:13px; font-weight:700; margin-bottom:8px;">
+            Примеры комментариев (с переводом на русский):
+          </div>
+          <div class="reviews-list" id="reviewsListContainer"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         VIEW 2: ИЗБРАННОЕ (ЛАЙКИ) И УМНОЕ СРАВНЕНИЕ 1-НА-1
+         ==================================================================== -->
+    <section class="view-section" id="view-compare">
+      <div class="card" style="margin-bottom: 16px;">
+        <div class="card-title-row" style="flex-wrap:wrap;">
+          <div>
+            <div class="card-title">❤️ Ваши товары и Сравнение</div>
+            <p style="font-size:13px; color:var(--text-secondary); margin-top:2px;">
+              Лайкайте понравившиеся товары ❤️ и выбирайте любые 2 карточки, чтобы сравнить их между собой
+            </p>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-secondary" id="filterAllBtn" style="border-color:var(--kz-cyan);">Все товары</button>
+            <button class="btn-secondary" id="filterLikedBtn">❤️ Только лайкнутые</button>
+          </div>
+        </div>
+
+        <!-- Visual Cards with Pictures and Like Buttons -->
+        <div class="visual-cards-grid" id="visualCatalogGrid"></div>
+      </div>
+
+      <!-- Visual 1-vs-1 or 2-3 Item Duel Arena -->
+      <div class="card">
+        <div class="card-title-row">
+          <div class="card-title">⚖️ Наглядное сравнение выбранных товаров</div>
+          <button class="btn-secondary" id="clearCompareSelectionBtn">Сбросить выбор</button>
+        </div>
+
+        <div id="duelArenaContainer"></div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         VIEW 3: ФОТО-ИНСТРУКЦИЯ СО СТРЕЛКАМИ И УСТАНОВКА НА ТЕЛЕФОН
+         ==================================================================== -->
+    <section class="view-section" id="view-guide">
+      <!-- App Install Block for iPhone & Android -->
+      <div class="card" style="margin-bottom: 18px;">
+        <div class="card-title-row">
+          <div class="card-title">📲 Как установить этот сайт как приложение на телефон</div>
+          <span class="badge-kz">iPhone и Android</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
+          <!-- Android Download Card -->
+          <div style="background:var(--bg-input); border:1.5px solid rgba(16, 185, 129, 0.35); border-radius:16px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; gap:12px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <span style="font-size:26px;">🤖</span>
+                <strong style="font-size:16px;">Для Android (Samsung, Xiaomi и др.)</strong>
+              </div>
+              <p style="font-size:13px; color:var(--text-secondary);">
+                Нажмите зелёную кнопку ниже — приложение сразу установится на ваш рабочий стол без Google Play.
+              </p>
+            </div>
+            <button class="btn-primary" id="androidDownloadAppBtn" style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 6px 20px -4px rgba(16, 185, 129, 0.5); width:100%;">
+              📥 Скачать и установить на Android
+            </button>
+          </div>
+
+          <!-- iPhone Add to Home Screen Card -->
+          <div style="background:var(--bg-input); border:1.5px solid rgba(0, 180, 216, 0.35); border-radius:16px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <span style="font-size:26px;">🍏</span>
+                <strong style="font-size:16px;">Для iPhone (через Safari)</strong>
+              </div>
+              <div style="font-size:13.5px; color:var(--text-primary); display:flex; flex-direction:column; gap:8px;">
+                <div>1️⃣ Откройте этот сайт в браузере <strong>Safari</strong> на iPhone.</div>
+                <div>2️⃣ Нажмите иконку <strong>«Поделиться» [⬆️]</strong> в нижней панели экрана.</div>
+                <div>3️⃣ Пролистайте чуть ниже и нажмите <strong>«➕ На экран „Домой“»</strong> (Добавить).</div>
+              </div>
+            </div>
+            <div style="font-size:12px; color:var(--kz-cyan); font-weight:700;">
+              ✨ На рабочем столе iPhone появится красная иконка «拼 PDD KZ»!
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4-Step Photo Tutorial with Red Arrows -->
+      <div class="card">
+        <div class="card-title-row">
+          <div>
+            <div class="card-title">📸 Инструкция: Где взять ссылку на товар в Pinduoduo</div>
+            <p style="font-size:13px; color:var(--text-secondary); margin-top:2px;">
+              Всего 4 простых шага со стрелками — занимает 3 секунды
+            </p>
+          </div>
+        </div>
+
+        <div class="tutorial-grid">
+          <div class="tutorial-step-card">
+            <div class="tutorial-step-header">
+              <div class="step-num-circle">1</div>
+              <div>
+                <strong style="font-size:14px; display:block;">Откройте товар</strong>
+                <span style="font-size:11.5px; color:var(--text-secondary);">Нажмите на карточку товара</span>
+              </div>
+            </div>
+            <img src="./step1_arrow.jpg" alt="Шаг 1 — Выберите товар" class="tutorial-step-img" />
+          </div>
+
+          <div class="tutorial-step-card">
+            <div class="tutorial-step-header">
+              <div class="step-num-circle">2</div>
+              <div>
+                <strong style="font-size:14px; display:block;">Кнопка сверху справа</strong>
+                <span style="font-size:11.5px; color:var(--text-secondary);">Квадратик со стрелкой [↑]</span>
+              </div>
+            </div>
+            <img src="./step2_arrow.jpg" alt="Шаг 2 — Нажмите Поделиться" class="tutorial-step-img" />
+          </div>
+
+          <div class="tutorial-step-card">
+            <div class="tutorial-step-header">
+              <div class="step-num-circle">3</div>
+              <div>
+                <strong style="font-size:14px; display:block;">Нажмите Copy Link</strong>
+                <span style="font-size:11.5px; color:var(--text-secondary);">Синий значок цепочки</span>
+              </div>
+            </div>
+            <img src="./step3_arrow.jpg" alt="Шаг 3 — Нажмите Copy Link" class="tutorial-step-img" />
+          </div>
+
+          <div class="tutorial-step-card">
+            <div class="tutorial-step-header">
+              <div class="step-num-circle">4</div>
+              <div>
+                <strong style="font-size:14px; display:block;">Вставьте ссылку сюда</strong>
+                <span style="font-size:11.5px; color:var(--text-secondary);">Появится Copy successful</span>
+              </div>
+            </div>
+            <img src="./step4_arrow.jpg" alt="Шаг 4 — Copy successful" class="tutorial-step-img" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         VIEW 4: ПРОСТЫЕ НАСТРОЙКИ КУРСА И НДС
+         ==================================================================== -->
+    <section class="view-section" id="view-settings">
+      <div class="top-summary-grid">
+        <div class="card">
+          <div class="card-title-row">
+            <div class="card-title">🇰🇿 Постоянный курс Юаня и НДС</div>
+            <button class="btn-secondary" id="refreshLiveRateBtn">🔄 Обновить курс из интернета</button>
+          </div>
+
+          <div class="simple-calc-inputs">
+            <div class="calc-field">
+              <label>Постоянный курс (1 ¥ → ₸)</label>
+              <input type="number" id="setRateCnyKzt" step="0.01" value="66.96" />
+            </div>
+            <div class="calc-field">
+              <label>НДС РК по умолчанию (%)</label>
+              <input type="number" id="setVatPercent" step="1" value="12" />
+            </div>
+          </div>
+
+          <button class="btn-primary" id="saveSettingsBtn" style="width:100%;">
+            💾 Сохранить курс и НДС
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-title-row">
+            <div class="card-title">🧠 Нейросеть Gemini AI (Опционально)</div>
+          </div>
+          <p style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
+            Сайт отлично анализирует товары и считает НДС без ключей. Если хотите подключить нейросеть Google Gemini, можно вставить ключ ниже:
+          </p>
+          <div class="calc-field" style="margin-bottom:12px;">
+            <label>Google Gemini API Key</label>
+            <input type="password" id="setGeminiKey" placeholder="AIzaSy... (необязательно)" />
+          </div>
+          <button class="btn-secondary" id="saveApiKeysBtn" style="width:100%;">
+            🔑 Сохранить ключ
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ====================================================================
+       SMART MODAL: САМО СПРАШИВАЕТ, ДОБАВИТЬ ЛИ СКРИНШОТ
+       ==================================================================== -->
+  <div class="modal-backdrop" id="screenshotAskModal">
+    <div class="modal-card">
+      <div style="font-size:32px; margin-bottom:8px;">📸</div>
+      <h3 style="font-size:18px; font-weight:800; margin-bottom:8px;">
+        Хотите добавить скриншот этого товара?
+      </h3>
+      <p style="font-size:13.5px; color:var(--text-secondary); margin-bottom:16px;">
+        Pinduoduo скрыл точную цену внутри короткой ссылки. Вы можете <strong>прикрепить скриншот товара</strong> (сайт сам считает цену и отзывы с картинки) или <strong>продолжить без скриншота</strong>, просто указав цену:
+      </p>
+
+      <div style="background:var(--bg-input); padding:12px; border-radius:14px; border:1px solid var(--border-color); margin-bottom:16px;">
+        <label style="font-size:12px; color:var(--text-secondary); font-weight:700; display:block; margin-bottom:6px;">
+          Или введите текущую цену товара с экрана Pinduoduo:
+        </label>
+        <div style="display:flex; gap:8px;">
+          <input type="number" id="modalQuickPriceInput" placeholder="Напр. 121 или 529" style="flex:1; background:var(--bg-card); border:1.5px solid var(--kz-cyan); border-radius:10px; padding:10px; color:var(--text-primary); font-size:15px; font-weight:800;" />
+          <select id="modalQuickCurrencySelect" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:10px; padding:0 10px; color:var(--text-primary); font-weight:700;">
+            <option value="KZT" selected>₸ Тенге</option>
+            <option value="CNY">¥ Юани</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button class="btn-primary" id="modalContinueWithoutScreenshotBtn" style="width:100%;">
+          ⚡ Продолжить без скриншота (Посчитать ₸ + НДС)
+        </button>
+        <button class="btn-secondary" id="modalPickScreenshotBtn" style="width:100%; padding:13px;">
+          📸 Да, выбрать скриншот товара с телефона / ПК
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button class="nav-tab active" data-target="view-analyzer">
+        <span class="nav-icon">🔍</span>
+        <span>Проверка</span>
+      </button>
+      <button class="nav-tab" data-target="view-compare">
+        <span class="nav-icon">❤️</span>
+        <span>Сравнение</span>
+        <span class="nav-counter" id="compareCountBadge">2</span>
+      </button>
+      <button class="nav-tab" data-target="view-guide">
+        <span class="nav-icon">📸</span>
+        <span>Инструкция</span>
+      </button>
+      <button class="nav-tab" data-target="view-settings">
+        <span class="nav-icon">⚙️</span>
+        <span>Курс и НДС</span>
+      </button>
+    </div>
+  </nav>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
